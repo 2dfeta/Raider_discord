@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 import os
 import json
+import asyncio
 from colorama import init, Fore, Style
 
 init(autoreset=True)
@@ -33,7 +34,7 @@ def display_logo():
 ░▒▓█▓▒░░▒▓█▓▒░  ░▒▓█▓▒░            ░▒▓█▓▓█▓▒░ ░▒▓█▓▒░▒▓█▓▒░         ░▒▓█▓▒░     
 ░▒▓███████▓▒░   ░▒▓█▓▒░             ░▒▓██▓▒░  ░▒▓█▓▒░▒▓████████▓▒░  ░▒▓█▓▒░     
 '''
-    os.system('cls' if os.name == 'nt' else 'clear')  
+    os.system('cls' if os.name == 'nt' else 'clear')
     print(Fore.BLUE + logo)
 
 def display_status(connected):
@@ -43,13 +44,10 @@ def display_status(connected):
         print(Fore.RED + "Status: Disconnected")
 
 def token_management():
-    os.system('cls' if os.name == 'nt' else 'clear')  # Clear the console before showing token options
+    os.system('cls' if os.name == 'nt' else 'clear')
     print(Fore.CYAN + "Welcome to the bot token management!\n")
     print("1. Set new token")
-    print("2. Load previous token")
-    
-    # Adding an empty line between options and the input prompt
-    print()
+    print("2. Load previous token\n")
 
     choice = input(Fore.YELLOW + "Choose an option (1, 2): ")
 
@@ -71,29 +69,31 @@ def token_management():
         return None
 
 intents = discord.Intents.default()
-intents.messages = True  # Enable access to message content
-intents.message_content = True  # Enable access to message content specifically
-intents.typing = False  # Disable typing intent (optional)
-intents.presences = False  # Disable presence updates (optional)
+intents.messages = True
+intents.message_content = True
+intents.typing = False
+intents.presences = False
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-class SpamButton(discord.ui.View):
-    def __init__(self, message):
-        super().__init__()
-        self.message = message
+# ✅ Slash command không cần bấm nút, tự spam ngay
+@bot.tree.command(name="spamraid", description="Gửi tin nhắn spam tự động")
+@app_commands.describe(
+    message="Nội dung tin nhắn cần spam",
+    amount="Số lượng tin nhắn muốn gửi"
+)
+async def spamraid(interaction: discord.Interaction, message: str, amount: int):
+    if amount > 50:
+        await interaction.response.send_message("❌ Không được gửi quá 50 tin nhắn một lần.", ephemeral=True)
+        return
 
-    @discord.ui.button(label="Spam", style=discord.ButtonStyle.red)
-    async def spam_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()  
-        for _ in range(5):  
-            await interaction.followup.send(self.message)  
+    await interaction.response.send_message(
+        f"🚀 Bắt đầu spam `{amount}` lần:\n`{message}`", ephemeral=True
+    )
 
-@bot.tree.command(name="spamraid", description="Send a message and generate a button to spam")
-@app_commands.describe(message="The message you want to spam")
-async def spamraid(interaction: discord.Interaction, message: str):
-    view = SpamButton(message)
-    await interaction.response.send_message(f"💥SPAM TEXT💥 : {message}", view=view, ephemeral=True)  
+    for i in range(amount):
+        await interaction.channel.send(message)
+        await asyncio.sleep(0.3)  # Optional delay để tránh rate limit
 
 @bot.event
 async def on_ready():
@@ -102,7 +102,7 @@ async def on_ready():
     print("Connected as " + Fore.YELLOW + f"{bot.user}")
 
     try:
-        await bot.tree.sync()  
+        await bot.tree.sync()
         print(Fore.GREEN + "Commands successfully synchronized.")
     except Exception as e:
         display_status(False)
@@ -116,14 +116,14 @@ if __name__ == "__main__":
         except discord.errors.LoginFailure:
             print(Fore.RED + "Can't connect to token. Please check your token.")
             input(Fore.YELLOW + "Press Enter to go back to the menu...")
-            TOKEN = token_management()  # Restart the token selection process
+            TOKEN = token_management()
             if TOKEN:
-                bot.run(TOKEN)  # Run again with the new token
+                bot.run(TOKEN)
         except Exception as e:
             print(Fore.RED + f"An unexpected error occurred: {e}")
             input(Fore.YELLOW + "Press Enter to restart the menu...")
-            TOKEN = token_management()  # Restart the token selection process
+            TOKEN = token_management()
             if TOKEN:
-                bot.run(TOKEN)  # Run again with the new token
+                bot.run(TOKEN)
     else:
         print(Fore.RED + "❌ Error: Unable to load or set a token.")
