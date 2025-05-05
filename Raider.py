@@ -92,8 +92,20 @@ async def spamraid(interaction: discord.Interaction, message: str, amount: int):
     )
 
     for i in range(amount):
-        await interaction.channel.send(message)
-        await asyncio.sleep(0.3)  # Optional delay để tránh rate limit
+        try:
+            if interaction.channel is not None:
+                await interaction.channel.send(message)
+            await asyncio.sleep(1)  # Tăng delay để tránh rate limit
+        except discord.errors.Forbidden:
+            print(Fore.RED + "Bot không có quyền gửi tin nhắn trong kênh này.")
+            break
+        except discord.errors.HTTPException as e:
+            print(Fore.RED + f"Lỗi HTTP xảy ra: {e}")
+            break
+        except Exception as e:
+            print(Fore.RED + f"Lỗi không xác định: {e}")
+            break
+    print(Fore.GREEN + "Spam hoàn tất")
 
 @bot.event
 async def on_ready():
