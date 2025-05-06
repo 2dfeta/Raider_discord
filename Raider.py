@@ -3,7 +3,6 @@ from discord.ext import commands
 from discord import app_commands
 import os
 import json
-import asyncio
 from colorama import init, Fore, Style
 
 init(autoreset=True)
@@ -44,18 +43,22 @@ def display_status(connected):
         print(Fore.RED + "Status: Disconnected")
 
 def token_management():
-    os.system('cls' if os.name == 'nt' else 'clear')
+    os.system('cls' if os.name == 'nt' else 'clear')  # Clear the console before showing token options
     print(Fore.CYAN + "Welcome to the bot token management!\n")
     print("1. Set new token")
     print("2. Load previous token")
+    
+    # Adding an empty line between options and the input prompt
     print()
+
     choice = input(Fore.YELLOW + "Choose an option (1, 2): ")
+
     if choice == "1":
         new_token = input(Fore.GREEN + "Enter the new token: ")
         save_token(new_token)
         print(Fore.GREEN + "Token successfully set!")
         return new_token
-    elif choice == "2":
+    elif choice == "22":
         token = load_token()
         if token:
             print(Fore.GREEN + f"Previous token loaded: {token}")
@@ -68,34 +71,36 @@ def token_management():
         return None
 
 intents = discord.Intents.default()
-intents.messages = True
-intents.message_content = True
-intents.typing = False
-intents.presences = False
+intents.messages = True  # Enable access to message content
+intents.message_content = True  # Enable access to message content specifically
+intents.typing = False  # Disable typing intent (optional)
+intents.presences = False  # Disable presence updates (optional)
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-@bot.tree.command(name="spamraid", description="Send a message multiple times")
-@app_commands.describe(message="The message to spam", amount="Number of times to send")
-async def spamraid(interaction: discord.Interaction, message: str, amount: int = 5):
-    if amount > 50:
-        await interaction.response.send_message("\u274c Limit is 50 messages.", ephemeral=True)
-        return
+class SpamButton(discord.ui.View):
+    def __init__(self, message):
+        super().__init__()
+        self.message = message
 
-    await interaction.response.send_message(f"Spamming `{message}` {amount} times.", ephemeral=True)
+    @discord.ui.button(label="Spam", style=discord.ButtonStyle.red)
+    async def spam_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()  
+        for _ in range(9):  
+            await interaction.followup.send(self.message)  
 
-    try:
-        for _ in range(amount):
-            await interaction.channel.send(message)
-            await asyncio.sleep(0.25)
-    except Exception as e:
-        await interaction.followup.send(f"\u274c Error sending messages: {e}", ephemeral=True)
+@bot.tree.command(name="spamraid", description="Send a message and generate a button to spam")
+@app_commands.describe(message="The message you want to spam")
+async def spamraid(interaction: discord.Interaction, message: str):
+    view = SpamButton(message)
+    await interaction.response.send_message(f"💥SPAM TEXT💥 : {message}", view=view, ephemeral=True)  
 
 @bot.event
 async def on_ready():
     display_logo()
     display_status(True)
     print("Connected as " + Fore.YELLOW + f"{bot.user}")
+
     try:
         await bot.tree.sync()  
         print(Fore.GREEN + "Commands successfully synchronized.")
@@ -111,14 +116,14 @@ if __name__ == "__main__":
         except discord.errors.LoginFailure:
             print(Fore.RED + "Can't connect to token. Please check your token.")
             input(Fore.YELLOW + "Press Enter to go back to the menu...")
-            TOKEN = token_management()
+            TOKEN = token_management()  # Restart the token selection process
             if TOKEN:
-                bot.run(TOKEN)
+                bot.run(TOKEN)  # Run again with the new token
         except Exception as e:
             print(Fore.RED + f"An unexpected error occurred: {e}")
             input(Fore.YELLOW + "Press Enter to restart the menu...")
-            TOKEN = token_management()
+            TOKEN = token_management()  # Restart the token selection process
             if TOKEN:
-                bot.run(TOKEN)
+                bot.run(TOKEN)  # Run again with the new token
     else:
-        print(Fore.RED + "\u274c Error: Unable to load or set a token.")
+        print(Fore.RED + "❌ Error: Unable to load or set a token.")
